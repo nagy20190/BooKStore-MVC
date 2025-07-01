@@ -5,130 +5,224 @@ using BKStore_MVC.Repository.Interfaces;
 using BKStore_MVC.ViewModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace BKStore_MVC.Controllers
 {
     [Authorize(Roles = "Admin")]
-
+    /// <summary>
+    /// Controller for managing categories.
+    /// </summary>
     public class CategoryController : Controller
     {
         ICategoryRepository categoryRepository;
         IBookRepository bookRepository;
         IMapper _mapper;
-        public CategoryController(ICategoryRepository _categoryRepository, IMapper mapper, IBookRepository _bookRepository)
+        private readonly ILogger<CategoryController> _logger;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CategoryController"/> class.
+        /// </summary>
+        public CategoryController(ICategoryRepository _categoryRepository, IMapper mapper, IBookRepository _bookRepository, ILogger<CategoryController> logger)
         {
             categoryRepository = _categoryRepository;
             bookRepository = _bookRepository;
             _mapper = mapper;
+            _logger = logger;
         }
-        // DONE !
+        /// <summary>
+        /// Displays all categories.
+        /// </summary>
         public IActionResult Index()
         {
-            return View("Index", categoryRepository.GetAll());
+            _logger.LogInformation("Index action called: Displaying all categories.");
+            try
+            {
+                var categories = categoryRepository.GetAll();
+                if (categories == null)
+                {
+                    _logger.LogWarning("No categories found in the repository.");
+                    return View("Index", new List<Category>());
+                }
+                return View("Index", categories);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while fetching categories.");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-        // DONE !
+        /// <summary>
+        /// Shows details for a specific category.
+        /// </summary>
         public IActionResult Details(int id)
         {
-            var categoryFromDB = categoryRepository.GetByID(id);
-            if (categoryFromDB == null)
+            _logger.LogInformation($"Details action called for category ID: {id}");
+            try
             {
-                return NotFound("Category Not Found");
+                var categoryFromDB = categoryRepository.GetByID(id);
+                if (categoryFromDB == null)
+                {
+                    _logger.LogWarning($"Category with ID {id} not found.");
+                    return NotFound("Category Not Found");
+                }
+                var books = bookRepository.GetBooksByCatgyId(categoryFromDB.CategoryID);
+                if (books == null || !books.Any())
+                {
+                    _logger.LogWarning($"No books found for category ID {id}.");
+                    return NotFound("There are no books in this category");
+                }
+                var bookVM = _mapper.Map<BookWithCategoryVM>(categoryFromDB);
+                bookVM.books = books;
+                return View("Details", bookVM);
             }
-
-            var books = bookRepository.GetBooksByCatgyId(categoryFromDB.CategoryID);
-            if (books == null || !books.Any())
+            catch (Exception ex)
             {
-                return NotFound("There are no books in this category");
+                _logger.LogError(ex, $"Error occurred while fetching details for category ID: {id}");
+                return StatusCode(500, "Internal server error");
             }
-
-            var bookVM = _mapper.Map<BookWithCategoryVM>(categoryFromDB);
-            bookVM.books = books;
-
-            return View("Details", bookVM);
         }
-                public IActionResult New()
+        /// <summary>
+        /// Returns the view for creating a new category.
+        /// </summary>
+        public IActionResult New()
         {
+            _logger.LogInformation("New action called: Displaying new category form.");
             return View("New");
         }
-
-        // DONE !
+        /// <summary>
+        /// Saves a new category to the repository.
+        /// </summary>
         public IActionResult SaveNew(int id, Category categoryFromRequest)
         {
-            if (ModelState.IsValid)
+            _logger.LogInformation("SaveNew action called.");
+            try
             {
-                categoryRepository.Add(categoryFromRequest);
-                categoryRepository.Save();
-                return RedirectToAction("Index");
+                if (ModelState.IsValid)
+                {
+                    categoryRepository.Add(categoryFromRequest);
+                    categoryRepository.Save();
+                    _logger.LogInformation("New category saved successfully.");
+                    return RedirectToAction("Index");
+                }
+                _logger.LogWarning("Model state invalid in SaveNew.");
+                return View("Edit", categoryFromRequest);
             }
-            return View("Edit", categoryFromRequest);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while saving new category.");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-        // DONE !
+        /// <summary>
+        /// Returns the view for editing a category.
+        /// </summary>
         public IActionResult Edit(int id)
         {
-           Category categoryFromDB = categoryRepository.GetByID(id);
-            if (categoryFromDB == null)
+            _logger.LogInformation($"Edit action called for category ID: {id}");
+            try
             {
-                return NotFound("Category Not Found");
+                Category categoryFromDB = categoryRepository.GetByID(id);
+                if (categoryFromDB == null)
+                {
+                    _logger.LogWarning($"Category with ID {id} not found for editing.");
+                    return NotFound("Category Not Found");
+                }
+                return View("Edit", categoryFromDB);
             }
-            return View("Edit", categoryFromDB); 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while editing category ID: {id}");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-        // DONE !
+        /// <summary>
+        /// Saves the edited category to the repository.
+        /// </summary>
         public IActionResult SaveEdit(int id, Category categoryFromRequest)
         {
-            
+            _logger.LogInformation($"SaveEdit action called for category ID: {id}");
+            try
+            {
                 if (ModelState.IsValid)
                 {
                     var categoryFromDB = categoryRepository.GetByID(id);
                     if (categoryFromDB == null)
                     {
+                        _logger.LogWarning($"Category with ID {id} not found for saving edit.");
                         return NotFound("Not Found");
                     }
-
-                    // Map the properties from categoryFromRequest to categoryFromDB
                     _mapper.Map(categoryFromRequest, categoryFromDB);
-
-                    // Save 
                     categoryRepository.Update(categoryFromDB);
                     categoryRepository.Save();
-
-                    // Redirect
+                    _logger.LogInformation($"Category with ID {id} updated successfully.");
                     return RedirectToAction("Index");
                 }
-
+                _logger.LogWarning("Model state invalid in SaveEdit.");
                 return View("Edit", categoryFromRequest);
-            
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while saving edit for category ID: {id}");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-        // DONE !
+        /// <summary>
+        /// Returns the view for deleting a category.
+        /// </summary>
         public IActionResult Delete(int id)
         {
-           Category categoryFromDB =  categoryRepository.GetByID(id);
-
-            if (categoryFromDB == null)
+            _logger.LogInformation($"Delete action called for category ID: {id}");
+            try
             {
-                return NotFound("Not Found");
+                Category categoryFromDB = categoryRepository.GetByID(id);
+                if (categoryFromDB == null)
+                {
+                    _logger.LogWarning($"Category with ID {id} not found for deletion.");
+                    return NotFound("Not Found");
+                }
+                return View("Delete", categoryFromDB);
             }
-            return View("Delete", categoryFromDB);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while deleting category ID: {id}");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-        // DONE !
+        /// <summary>
+        /// Confirms and deletes a category from the repository.
+        /// </summary>
         public IActionResult ConfirmDelete(int id)
         {
-            Category categoryFromDB = categoryRepository.GetByID(id);
-            if (categoryFromDB == null)
+            _logger.LogInformation($"ConfirmDelete action called for category ID: {id}");
+            try
             {
-                return NotFound("Not Found");
+                Category categoryFromDB = categoryRepository.GetByID(id);
+                if (categoryFromDB == null)
+                {
+                    _logger.LogWarning($"Category with ID {id} not found for confirm delete.");
+                    return NotFound("Not Found");
+                }
+                categoryRepository.Delete(id);
+                categoryRepository.Save();
+                _logger.LogInformation($"Category with ID {id} deleted successfully.");
+                return RedirectToAction("Index");
             }
-
-            categoryRepository.Delete(id);
-            categoryRepository.Save();
-            return RedirectToAction("Index");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while confirming delete for category ID: {id}");
+                return StatusCode(500, "Internal server error");
+            }
         }
-
-
+        /// <summary>
+        /// Checks if a category exists by ID.
+        /// </summary>
+        private bool CategoryExists(int id)
+        {
+            _logger.LogInformation($"Checking existence for category ID: {id}");
+            var exists = categoryRepository.GetByID(id) != null;
+            _logger.LogInformation($"Category existence for ID {id}: {exists}");
+            return exists;
+        }
     }
 }
 #region Test

@@ -23,7 +23,7 @@ namespace BKStore_MVC.Controllers
         IShippingMethodRepository shippingMethodRepository;
         private readonly SignInManager<ApplicationUser> _signInManager;
         public OrderController(SignInManager<ApplicationUser> signInManager
-            , IOrderRepository orderRepository,IShippingRepository shippingRepository,
+            , IOrderRepository orderRepository, IShippingRepository shippingRepository,
             ICustomerRepository customerRepository, IBookRepository bookRepository,
             IOrderBookRepository orderBookRepository, IDeliveryClientRepository deliveryClientRepository
             , IGovernorateRepository governorateRepository, IShippingMethodRepository shippingMethodRepository)
@@ -49,30 +49,38 @@ namespace BKStore_MVC.Controllers
         }
         public IActionResult DetailedOrder(int OrderId)
         {
-            List<OrderBook> orderBook= orderBookRepository.GetByID(OrderId);
-            List<BookCartItem> bookCartItems= new List<BookCartItem>();
+            var order = orderRepository.GetByID(OrderId);
+            if (order == null)
+                return NotFound("Order not found.");
+
+            var customer = customerRepository.GetByID(order.CustomerID ?? 0);
+            if (customer == null)
+                return NotFound("Customer not found.");
+
+            List<OrderBook> orderBook = orderBookRepository.GetByID(OrderId);
+            List<BookCartItem> bookCartItems = new List<BookCartItem>();
             OrderDetailVM orderDetailVM = new OrderDetailVM();
             if (orderBook != null)
             {
                 foreach (var item in orderBook.ToList())
                 {
                     BookCartItem bookCart = new BookCartItem();
-                    bookCart.Title = bookRepository.GetByID(item.BookID??0).Title;
+                    bookCart.Title = bookRepository.GetByID(item.BookID ?? 0).Title;
                     bookCart.Quantity = item.Quantity;
                     bookCart.Price = bookRepository.GetByID(item.BookID ?? 0).Price;
                     bookCart.ImagePath = bookRepository.GetByID(item.BookID ?? 0).ImagePath;
                     bookCart.BookId = item.BookID;
-                    
+
                     bookCartItems.Add(bookCart);
                 }
             }
 
-            orderDetailVM.bookCartItems = bookCartItems ;
-            orderDetailVM.CustomerName = customerRepository.GetByID(orderRepository.GetByID(OrderId).CustomerID ?? 0).Name;
-            orderDetailVM.TotalPrice = orderRepository.GetByID(OrderId).TotalAmount ?? 0;
-            orderDetailVM.CustomerAddress = customerRepository.GetByID(orderRepository.GetByID(OrderId).CustomerID ?? 0).Address;
-            orderDetailVM.Governorate = governorateRepository.GetByID(customerRepository.GetByID(orderRepository.GetByID(OrderId).CustomerID ?? 0).GovernorateID ?? 0).Name;
-            orderDetailVM.CustomerID = orderRepository.GetByID(OrderId).CustomerID;
+            orderDetailVM.bookCartItems = bookCartItems;
+            orderDetailVM.CustomerName = customer.Name;
+            orderDetailVM.TotalPrice = order.TotalAmount ?? 0;
+            orderDetailVM.CustomerAddress = customer.Address;
+            orderDetailVM.Governorate = governorateRepository.GetByID(customer.GovernorateID ?? 0).Name;
+            orderDetailVM.CustomerID = order.CustomerID;
             orderDetailVM.OrderID = OrderId;
             orderDetailVM.PaymentFees = shippingMethodRepository.GetByID(1).PaymentFees;
             return View("DetailedOrder", orderDetailVM);
@@ -108,11 +116,11 @@ namespace BKStore_MVC.Controllers
                     };
 
                     bookCartItems.Add(bookCart);
-                  
+
                 }
                 //orderDetailVM.bookCartItems = bookCartItems;
             }
-            
+
             var order = orderRepository.GetByID(OrderId);
             var customer = customerRepository.GetByID(order.CustomerID ?? 0);
             var governorate = governorateRepository.GetByID(customer.GovernorateID ?? 0);
