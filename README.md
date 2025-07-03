@@ -1,4 +1,4 @@
-# 📚 MVC Book Store
+<!-- # 📚 MVC Book Store
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue?logo=dotnet)]
 [![CI](https://img.shields.io/github/actions/workflow/status/USERNAME/REPO/ci.yml?label=CI&branch=main)]
@@ -18,8 +18,8 @@
 
 ## 🔍 Overview
 
-This is a responsive Online Book Store built using **ASP.NET MVC**.  
-Users can browse, search, manage carts, and purchase books online.  
+This is a responsive Online Book Store built using **ASP.NET MVC**.
+Users can browse, search, manage carts, and purchase books online.
 Admins can handle inventory and orders through a secure dashboard.
 
 ## 🎬 Demo
@@ -78,4 +78,6 @@ git clone https://github.com/USERNAME/REPO.git
 cd REPO
 dotnet ef database update
 dotnet run
-```
+``` -->
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/nagy20190/BooKStore-MVC)
